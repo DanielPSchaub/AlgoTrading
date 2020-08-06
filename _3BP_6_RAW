@@ -1,0 +1,440 @@
+//Daniel Schaub 4/11/2020, 3BP
+
+//Print( EntriesToday ); ExitsToday
+//VolumeROC
+//InsideBar
+//Pivot
+//Range
+//Bars since day started
+//Account name
+//Account funds
+//Open Positions
+//Trades made
+//CurrentEntries,CurrentShares
+//DailyHigh
+//DailyLimit
+//DailyTrades
+//DailyVolume
+//SetDollarTrailing //SetPercentTrailing
+//SetStopLoss
+//the smaller Bar2 is & still high, the higher the target
+//Half of Bar1 = 1R
+//Quarter of Bar1 = 2R
+//Eighth of Bar1 = 4R
+//bars since entrys
+
+Using tsdata.trading;
+
+Input: string iAccount1( "SIM1309675M" );
+ 
+ //Commented out for while we work with a Simulated Account
+method bool canDayTrade() 
+begin
+	{
+	Value1 = AccountsProvider2.Account[iAccount1].FourDaysTradeCount;
+	Print("Num of trades - Past Four Days: ", Value1);
+	if Value1 >= 3 then begin
+		Print( "Too Many Trades" );
+		return false; 
+	end;
+	}
+	return true;
+end;
+
+
+//For whatever reason, the offsets which are stoploss and target are given in cents, and must be integers. I.e. +$5 is 500
+method void SetUpOrder( string SymName, bool isLong, double EntPrice_Lim, double EntPrice_Stop, int Target_Lim, int StopLoss_Stop, int _shareSize)
+var: OrderTicket _Entry, OrderTicket _Target, OrderTicket _Stop, OSOOrderTicket OSO, OCOOrderTicket OCO;
+begin
+		_Entry = new OrderTicket;
+		_Target = new OrderTicket;
+		_Stop = new OrderTicket;
+		OSO = new OSOOrderTicket;
+		OCO = new OCOOrderTicket;
+		
+		//---------------------------
+		//_entry
+		//---------------------------
+		_Entry.Symbol = SymName;
+		_Entry.SymbolType = Category;
+		_Entry.Account = iAccount1;
+		_Entry.Quantity = _shareSize;
+		if isLong = true then begin
+			_Entry.Action = OrderAction.Buy;
+		end Else begin
+			_Entry.Action = OrderAction.Sellshort;
+		end;
+		_Entry.Type = OrderType.Limit;//StopLimit;
+		_Entry.Duration = "Day";
+		_Entry.LimitPrice = EntPrice_Lim;
+		_Entry.LimitPriceStyle = PriceStyle.None;
+		_Entry.LimitPriceOffset = 0;
+		_Entry.StopPrice = 0;//EntPrice_Stop;
+		_Entry.StopPriceStyle = PriceStyle.None;
+		_Entry.StopPriceOffset = 0;
+		_Entry.ActivationRules.UseActivationTime = false;
+		_Entry.ActivationRules.UseDeactivationTime = false;
+		_Entry.ActivationRules.Name = "(Unknown name)";
+		_Entry.TrailingStop = TrailingStopBehavior.Off;
+		_Entry.TrailingStopAmount = 0.0;
+		_Entry.IfTouched = false;
+		_Entry.IfTouchedPrice = 0.0;
+		_Entry.IfTouchedPriceStyle = PriceStyle.None;
+		_Entry.IfTouchedPriceOffset = 0;
+		_Entry.ShowOnly = false;
+		_Entry.ShowOnlyQuantity = 0;
+		_Entry.NonDisplay = false;
+		_Entry.Discretionary = false;
+		_Entry.DiscretionaryAmount = 0.0;
+		_Entry.BuyMinusSellPlus = false;
+		_Entry.Peg = PegBehavior.Off;
+		_Entry.AllOrNone = false;
+		_Entry.ConvertInvalidStopToMarket = false;
+		_Entry.Name = SymName + "_Entry";
+		
+		//---------------------------
+		//_target
+		//---------------------------
+		_Target.Symbol = SymName;
+		_Target.SymbolType = Category;
+		_Target.Account = iAccount1;
+		_Target.Quantity = _shareSize;
+		if isLong = true then begin
+			_Target.Action = OrderAction.Sell;
+		end Else begin 
+			_Target.Action = OrderAction.BuyToCover;
+		end;
+		_Target.Type = OrderType.Limit;
+		_Target.Duration = "GTC";
+		_Target.LimitPrice = 0;
+		_Target.LimitPriceStyle = PriceStyle.ParentPlus;
+		_Target.LimitPriceOffset = Target_Lim;
+		_Target.StopPrice = 0.0;
+		_Target.StopPriceStyle = PriceStyle.None;
+		_Target.StopPriceOffset = 0;
+		_Target.ActivationRules.UseActivationTime = false;
+		_Target.ActivationRules.UseDeactivationTime = false;
+		_Target.ActivationRules.Name = "(Unknown name)";
+		_Target.TrailingStop = TrailingStopBehavior.Off;
+		_Target.TrailingStopAmount = 0.0;
+		_Target.IfTouched = false;
+		_Target.IfTouchedPrice = 0.0;
+		_Target.IfTouchedPriceStyle = PriceStyle.None;
+		_Target.IfTouchedPriceOffset = 0;
+		_Target.ShowOnly = false;
+		_Target.ShowOnlyQuantity = 0;
+		_Target.NonDisplay = false;
+		_Target.Discretionary = false;
+		_Target.DiscretionaryAmount = 0.0;
+		_Target.BuyMinusSellPlus = false;
+		_Target.Peg = PegBehavior.Off;
+		_Target.AllOrNone = false;
+		_Target.ConvertInvalidStopToMarket = false;
+		_Target.Name = SymName + "_Target";
+		
+		//---------------------------
+		//_stop
+		//---------------------------
+		_Stop.Symbol = SymName;
+		_Stop.SymbolType = Category;
+		_Stop.Account = iAccount1;
+		_Stop.Quantity = _shareSize;
+		if isLong = true then begin
+			_Stop.Action = OrderAction.Sell;
+		end Else begin
+			_Stop.Action = OrderAction.BuyToCover;
+		end;
+		_Stop.Type = OrderType.StopMarket;
+		_Stop.Duration = "GTC";
+		_Stop.LimitPrice = 0.0;
+		_Stop.LimitPriceStyle = PriceStyle.None;
+		_Stop.LimitPriceOffset = 0;
+		_Stop.StopPrice = 0;
+		_Stop.StopPriceStyle = PriceStyle.ParentPlus;
+		_Stop.StopPriceOffset = -1 * StopLoss_Stop;
+		_Stop.ActivationRules.UseActivationTime = false;
+		_Stop.ActivationRules.UseDeactivationTime = false;
+		_Stop.ActivationRules.Name = "(Unknown name)";
+		_Stop.TrailingStop = TrailingStopBehavior.Off;
+		_Stop.TrailingStopAmount = 0.0;
+		_Stop.IfTouched = false;
+		_Stop.IfTouchedPrice = 0.0;
+		_Stop.IfTouchedPriceStyle = PriceStyle.None;
+		_Stop.IfTouchedPriceOffset = 0;
+		_Stop.ShowOnly = false;
+		_Stop.ShowOnlyQuantity = 0;
+		_Stop.NonDisplay = false;
+		_Stop.Discretionary = false;
+		_Stop.DiscretionaryAmount = 0.0;
+		_Stop.BuyMinusSellPlus = false;
+		_Stop.Peg = PegBehavior.Off;
+		_Stop.AllOrNone = false;
+		_Stop.ConvertInvalidStopToMarket = false;
+		_Stop.Name = SymName + "_Stop";
+		
+		//---------------------------
+		//oso
+		//---------------------------
+		OSO.PrimaryTicket = _Entry;
+		OSO.Name = "OSO";
+		
+		//---------------------------
+		//oco
+		//---------------------------
+		OCO.Name = "OCO";
+		OCO.Siblings.Add( _Target );
+		OCO.Siblings.Add( _Stop );
+		
+		OSO.SecondaryTickets.Add( OCO );
+		OSO.Send( );
+end;
+
+
+method bool is3BarPlay_Long()
+var: double bodyRatio, int consolBarCount, int highestBarCount, int igniteBarSizeMult,
+	double marathonPerc, double similarSizePerc, double topHalfInsideBar;
+begin
+	bodyRatio = .8; 
+	consolBarCount = 6;
+	highestBarCount = 20;
+	igniteBarSizeMult = 2;
+	marathonPerc = 4/5;
+	similarSizePerc = .1;
+	topHalfInsideBar = .5;
+
+	/// BAR 1 ///
+	//Long
+	Value1 = C[1];
+	Value2 = O[1];
+	if( Value1 < Value2 ) then 
+	begin 
+		Print( "Previous Bar not Long: C ", Value1, " O ", Value2);
+		return false; 
+	end;
+
+	//body of bar is majority O/C
+	Value1 = AbsValue( C[1] - O[1] );
+	Value2 = AbsValue( H[1] - L[1] ) * bodyRatio;
+	if( Value1 < Value2 ) then 
+	begin
+		Print( "Previous Bar not majority O/C, O-C ", Value1, " H-L*Ratio ", Value2, "BodyRatio set to ", bodyRatio);
+		return false; 
+	end;
+
+	//a move past previous high
+	Value1 = H[1];
+	Value2 = Dailyhigh;	//Highest( H[2], highestBarCount );
+	if( Value1 < Value2 ) then 
+	begin 
+		Print( "Previous Bar is not larger than previous high, H[1]", Value1, " Highest ", Value2);
+		return false; 
+	end;
+ 
+	//more than twice the size of preceding bars
+	Value1 = AbsValue( H[1] - L[1] ) / igniteBarSizeMult;
+	Value2 = Average( AbsValue( H[2] - L[2] ), consolBarCount );
+	if( Value1 < Value2 ) then 
+	begin
+		Print( "Previous Bar not twice the size of preceding bars, Our Reduced Height:", Value1, "Average preceding height:", Value2);
+		return false; 
+	end;
+
+	//previous bars were consolidating, i.e. no 'marathon'
+	Value1 = 0;
+	For Value2 = 2 to consolBarCount begin 
+		if C[Value2]-O[Value2] > 0 then Value1 += 1;
+	end;
+	if Value1 >= consolBarCount * marathonPerc then 
+	Begin
+		Print( "Too many bars Green in a row, 'marathon'. Green bars: ", Value1, " ConsolBars ", consolBarCount, " marathonPerc ", marathonPerc );
+		return false;
+	end;
+
+	/// BAR 2 ///
+	//similar highs between bar1 and bar2
+	Value1 = H[1];
+	Value2 = H;
+	Value3 = AbsValue( L[1] - H[1] ) * similarSizePerc;
+	if( Value1 < Value2 - Value3 ) or ( Value1 > Value2 + Value3 ) then 
+	begin
+		Print( "Tops of Bar1 and Bar2 too far apart: H[1]", Value1, "H[0]", Value2, " WiggleRoom +/- ", Value3 );
+		return false; 
+	end;
+	
+	//inside the top half(ish) of the range of Bar1
+	Value1 = H; //C
+	Value2 = H[1];
+	Value3 = AbsValue( H[1] - L[1] ) * topHalfInsideBar; 
+	if Value1 < Value2 - Value3 then 
+	begin 
+		Print( "Bar2 Not inside bar: C ", Value1, " H[1] ", Value2, " Ratio ", topHalfInsideBar, " Half-Bar ", Value3 );
+		return false; 
+	end;
+
+    return true;
+end;
+
+
+method bool is3BarPlay_Short()
+var: double bodyRatio, int consolBarCount, int lowestBarCount, int igniteBarSizeMult,
+	double marathonPerc, double similarSizePerc, double botHalfInsideBar;
+begin
+	bodyRatio = .8; 
+	consolBarCount = 6;
+	lowestBarCount = 20;
+	igniteBarSizeMult = 2;
+	marathonPerc = 4/5;
+	similarSizePerc = .1;
+	botHalfInsideBar = .5;
+
+	/// BAR 1 ///
+	//Short
+	Value1 = O[1];
+	Value2 = C[1];
+	if( Value1 < Value2 ) then 
+	begin 
+		Print( "Previous Bar not Short: O ", O[1], " C ", C[1]);
+		return false; 
+	end;
+
+	//body of bar is majority O/C
+	Value1 = AbsValue( C[1] - O[1] );
+	Value2 = AbsValue( H[1] - L[1] ) * bodyRatio;
+	if( Value1 < Value2 ) then 
+	begin
+		Print( "Previous Bar not majority O/C, O-C ", Value1, " H-L*Ratio ", Value2, "BodyRatio set to ", bodyRatio);
+		return false; 
+	end;
+
+	//a move past previous LOW
+	Value1 = L[1];
+	Value2 = Dailylow; //Lowest( L[2], lowestBarCount );
+	if( Value1 > Value2) then 
+	begin 
+		Print( "Previous Bar is not larger than previous low, L ", Value1, " Lowest ", Value2);
+		return false; 
+	end; 
+ 
+	//more than twice the size of preceding bars
+	Value1 = AbsValue( H[1] - L[1] ) / igniteBarSizeMult;
+	Value2 = Average( AbsValue( H[2] - L[2] ), consolBarCount );
+	if( Value1 < Value2 ) then 
+	begin
+		Print( "Previous Bar not twice the size of preceding bars, Our Height/2:", Value1, "Average preceding height:", Value2);
+		return false; 
+	end;
+
+	//previous bars were consolidating, i.e. no 'marathon'
+	Value1 = 0;
+	For Value2 = 2 to consolBarCount begin 
+		if O[Value2]-C[Value2] > 0 then Value1 += 1;
+	end;
+	if Value1 >= consolBarCount * marathonPerc then 
+	Begin
+		Print( "Too many bars Red in a row, 'marathon'. Red bars: ", Value1, " ConsolBars ", consolBarCount, " marathonPerc ", marathonPerc );
+		return false;
+	end;
+
+	/// BAR 2 ///
+	//similar lows between bar1 and bar2
+	Value1 = L[1];
+	Value2 = L;
+	Value3 = AbsValue( L[1] - H[1] ) * similarSizePerc;
+	if( Value1 > Value2 + Value3 ) or ( Value1 < Value2 - Value3 ) then 
+	begin
+		Print( "Bots of Bar1 and Bar2 too far apart: L[1] ", Value1, " L ", Value2, " WiggleRoom +/- ", Value3 );
+		return false; 
+	end;
+
+	//inside the BOT half(ish) of the range of Bar1
+	Value1 = L; //C;
+	Value2 = L[1];
+	Value3 = AbsValue( H[1] - L[1] ) * botHalfInsideBar; 
+	if( Value1 > Value2 + Value3 ) then 
+	begin 
+		Print( "Bar2 Not inside bar: C ", Value1, " L[1] ", Value2, " Ratio ", botHalfInsideBar, " Half-Bar ", Value3 );
+		return false; 
+	end;
+
+    return true;
+end;
+
+
+method int howManySharesForRisk( double enterPrice, double stopPrice, double cashRiskAmount )
+Begin
+	if enterPrice = stopPrice then begin
+		Print( "+++++++++++++++++++++++++++++++++++++++++++++++++DIVIDE BY ZERO ERROR+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++",
+			" EnterPrice ", enterPrice, " stopPrice " , stopPrice );
+			return 0;
+	end;
+	return Round( cashRiskAmount / AbsValue(enterPrice - stopPrice), 0 );	
+end;
+
+
+method double getSpread() Begin
+	return CurrentAsk - CurrentBid;
+end;
+
+
+////////////////////////////
+//////////Main//////////////
+////////////////////////////
+
+vars: bool isPattern(false), string orderName(""), double R(0), double l_Entry(0), double l_EntryLimit(0), 
+double l_StopLoss(0), int l_StopLossOffset(0), double l_Target(0), int l_TargetOffset(0), 
+double l_dollarRisk(0), double l_shareSize(0), double l_spread(0), bool isLong(false);
+
+if canDayTrade() = true Then
+Begin
+	Print( Symbol, " D ", D, " T ", T, " Bar# ", BarNumber, " H ", H, " L ", L, " O ", O, " C ", C );
+		
+	if is3BarPlay_Long() = true then 
+	begin
+		isPattern = true;
+		isLong = true;
+		print( "3bp buy = true " );
+		l_spread = getSpread();
+		if l_spread <= 0 then l_spread = 0.01;
+		l_Entry = H + getSpread(); 
+		if l_Entry < H[1] then l_Entry = H[1];
+		l_StopLoss = L;	
+	end
+	else if is3BarPlay_Short() = true then 
+	begin
+		isPattern = true;
+		isLong = false;
+		print( "3bp short = true " );
+		l_spread = getSpread();
+		if l_spread <= 0 then l_spread = 0.01;
+		l_Entry = L - l_spread; 
+		if l_Entry > L[1] then l_Entry = L[1];
+		l_StopLoss = H;
+	end
+	else begin 
+		isPattern = false; 
+	end;
+	
+	if isPattern = true then 
+	begin
+		orderName = Symbol + "_" + Currentdate.toString() + "_" + Currenttime.ToString();
+		R = 2;
+		l_dollarRisk = 10;
+		l_EntryLimit =  l_Entry + l_spread*3;
+		l_StopLossOffset = (l_Entry - l_StopLoss) * 100;
+		l_Target = l_EntryLimit + (l_EntryLimit - l_StopLoss) * R;
+		l_TargetOffset = (l_Target - l_EntryLimit) * 100;
+		l_shareSize = howManySharesForRisk( l_EntryLimit, l_StopLoss, l_dollarRisk ); //l_Entry
+			
+		Print( orderName, " isLong ", isLong,
+			" Entry ", l_Entry, " EntryLim ", l_EntryLimit, " Spread ", l_spread, 
+			" StopLoss ", l_StopLoss, " Stoploss Offset ", l_StopLossOffset, 
+			" Target ", l_Target, " Target Offset ", l_TargetOffset,
+			" ShareSize ", l_shareSize, " DollarRisk ", l_dollarRisk, 
+			  );
+		
+		if GetAppInfo( aiRealTimeCalc ) = 1 then
+			SetUpOrder( Symbol, isLong, l_EntryLimit, l_Entry, l_TargetOffset, l_StopLossOffset, l_shareSize ); 
+	end;
+	
+end; 
+ 
